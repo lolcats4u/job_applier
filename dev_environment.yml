@@ -1,0 +1,9 @@
+name: job_applier
+dependencies:
+  - black
+  - typer
+  - requests
+  - bs4
+  - keyring
+  - getpass
+  - playwright
