@@ -1,54 +1,11 @@
-import bs4
-import csv
+
 import getpass
 import keyring
-import os
 from playwright.sync_api import sync_playwright
-import requests
-import typer
-
-app = typer.Typer()
-def main():
-    job_file = File().load()
-
-class File():
-    def __init__(self, file_name):
-        self.file_name = file_name
-        self.contents = self.read_file(self.file_name)
-
-    def read_file(self):
-        with open( self.file_name , "r", encoding="utf-8") as file:
-            csv_reader = csv.DictReader(file)
-            self.contents = list(csv_reader)
-
-class Job():
-    def __init__(self):
-        pass
-    def save_job():
-        pass
-
-    def duplicate():
-        pass
-
-    def applied():
-        pass
-
-def load_accounts(name:str=None):
-    """format:
-      name, email, url, check_login_page
-      """
-    info = File("./account_info.csv").contents
-    accounts = {}
-    for account in info:
-        if not name:
-            accounts[account[0]] = Account(account[0], account[1], account[2], account[3])
-        else:
-            if name in account:
-                accounts[account[0]] = Account(account[0], account[1], account[2], account[3])
-    return accounts
+from file_handlers import File
 
 class Account:
-    def __init__(self,name, email, url, check_login_page):
+    def __init__(self,name, email=None, url=None, check_login_page=None):
         self.name = name
         self.email = email
         self.url = url
@@ -70,11 +27,19 @@ class Account:
             self.email = keyring.get_password(self.name, "email")
             self.passwd = keyring.get_credential(self.name, "password")
         
-        def write(self,key):
+        def write(self,key,file_handler):
             value = getpass.getpass(f"Enter {key}:")
             save = input(f"Save {key} to keychain? (y/n): ")
             if save.lower() == "y":
                 keyring.set_password(self.name, key, value)
+            print("Save this board with a name, email, url, and login page\n")
+            email = None
+            name = None
+            url = None
+            login_page = None
+            write_info = input(f"email:{email}, name:{name}, url:{url}, login_page:{login_page}\n")
+            file_handler.write_row(f"{name}, {email}, {url}, {login_page}")
+            print(f"Wrote {name}, {email}, {url}, {login_page} to {file_handler.file_name}")
             return value
     
     class LoginSession():
@@ -87,7 +52,7 @@ class Account:
             with sync_playwright() as p:
                 browser, page = get_page(p)
                 if "feed" not in profile_access_page:
-                    self.new_session(self.credentials.name)
+                    self.new_session()
 
         def new_session(self):
             with sync_playwright() as p:
@@ -105,5 +70,19 @@ class Account:
                 context.storage_state(path=f"./sessions/{self.credentials.name}_session.json")
                 browser.close()
 
-if __name__ == "__main__":
-    main()
+def load_account(name):
+    """format:
+      name, email, url, check_login_page
+      """
+    accounts = {}
+    loaded_account_file = File("./account_info.csv")
+    account = Account(name)
+    for account_info in loaded_account_file:
+        if account.name in account_info:
+            account.email = account_info[1]
+            account.url = account_info[2]
+            account.login_page = account_info[3]
+    return loaded_account_file, account
+    
+
+
